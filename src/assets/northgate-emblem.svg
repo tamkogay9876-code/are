@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title">
+  <title id="title">Northgate residential emblem</title>
+  <rect x="4" y="4" width="120" height="120" rx="10" fill="#091018" stroke="#5c90ab" stroke-width="2"/>
+  <path d="M24 100V28h16l24 35 24-35h16v72H86V54L64 85 42 54v46z" fill="#cceaf8"/>
+  <path d="M14 110h100" stroke="#6fd6b0" stroke-width="3"/>
+  <circle cx="104" cy="23" r="5" fill="#f1d27a"/>
+</svg>

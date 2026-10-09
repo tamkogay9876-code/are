@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <defs><pattern id="scan" width="1" height="4" patternUnits="userSpaceOnUse"><rect width="1" height="1" fill="#d9f2ff" opacity=".08"/></pattern></defs>
+  <rect width="240" height="240" fill="url(#scan)"/>
+  <path d="M14 28h28M198 28h28M14 212h28M198 212h28" fill="none" stroke="#76bddd" stroke-opacity=".16"/>
+  <circle cx="16" cy="16" r="1" fill="#cdeeff" opacity=".2"/><circle cx="220" cy="176" r="1" fill="#cdeeff" opacity=".18"/>
+</svg>

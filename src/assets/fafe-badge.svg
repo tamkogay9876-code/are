@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 52" role="img" aria-labelledby="title">
+  <title id="title">F.A.F.E response unit badge</title>
+  <rect x="1" y="1" width="158" height="50" rx="4" fill="#0a1117" stroke="#77b6d7" stroke-width="2"/>
+  <path d="M14 13h24v5H20v6h16v5H20v10h-6z" fill="#d7edf7"/>
+  <path d="M44 13h24v5H50v6h16v5H50v10h-6z" fill="#d7edf7"/>
+  <path d="M74 13h24v5H80v6h16v5H80v10h-6z" fill="#d7edf7"/>
+  <path d="M112 13l12 13-12 13h-7l12-13-12-13z" fill="#6fd6b0"/>
+  <text x="124" y="45" fill="#9bc9e9" font-family="monospace" font-size="7" text-anchor="middle">RESPONSE</text>
+</svg>
