@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#071018" />
+  <title>Are You Lying? — Northgate 3D</title>
+</head>
+<body class="three-body">
+  <div id="game3d">
+    <div class="hud top-hud">
+      <div class="brand"><span class="brand-mark">N</span><div><b>ARE YOU LYING?</b><small>NORTHGATE RESIDENTIAL CONTROL</small></div></div>
+      <div class="clock"><small>LOCAL TIME</small><strong id="clock">06:00</strong></div>
+      <div class="status"><i></i> SYSTEM ONLINE</div>
+    </div>
+    <div class="crosshair" aria-hidden="true">+</div>
+    <div class="hud left-hud">
+      <small class="eyebrow">SHIFT PROTOCOL / 01</small>
+      <h1 id="phase-title">Verify identity.</h1>
+      <p id="status-copy">Compare the visitor with the records. One detail may be wrong.</p>
+      <div class="visitor-card">
+        <div class="visitor-avatar" id="visitor-avatar">MC</div>
+        <div><small>VISITOR AT DOOR</small><strong id="visitor-name">Maya Chen</strong><span id="visitor-room">ROOM 101</span></div>
+      </div>
+      <div class="records" id="records">
+        <div><span>ID RECORD</span><b id="id-record">FAFE-101-8842</b></div>
+        <div><span>RELATIVE</span><b id="relative-record">Evan Chen</b></div>
+        <div><span>NEIGHBOR</span><b id="neighbor-record">Jon Bell</b></div>
+        <div><span>MICROCODE</span><b id="micro-record">NG-31-B</b></div>
+      </div>
+      <div class="action-grid">
+        <button id="allow" class="primary">ALLOW ENTRY <kbd>A</kbd></button>
+        <button id="deny" class="danger">DENY ENTRY <kbd>D</kbd></button>
+        <button id="call998" class="wide">CALL 998 / F.A.F.E <kbd>F</kbd></button>
+        <button id="inspect" class="wide ghost">INSPECT ID <kbd>I</kbd></button>
+      </div>
+      <p class="hint">WASD move · Mouse look · Click objects to inspect · Esc releases mouse</p>
+    </div>
+    <div class="hud right-hud">
+      <small class="eyebrow">EVIDENCE LOG</small>
+      <div id="evidence"><p class="log-entry">[06:00] Shift started. Awaiting first visitor.</p></div>
+      <div class="meter"><div><span>BUILDING TRUST</span><b id="trust-value">50%</b></div><div class="meter-track"><span id="trust-bar"></span></div></div>
+    </div>
+    <div class="hud bottom-hud"><span><i class="dot cyan"></i> NORTHGATE / BLOCK C</span><span id="controls-state">CLICK THE SCENE TO LOOK AROUND</span><span>PROTOTYPE 0.2.0</span></div>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="magnifier" aria-hidden="true"><div class="lens-cross">+</div><span>ID MICROCODE SCAN</span><strong id="magnifier-code">NG-31-B</strong></div>
+    <div id="start-overlay"><div class="start-card"><div class="start-symbol">N<span>•</span></div><small>NORTHGATE RESIDENTIAL CONTROL</small><h2>Someone is at the door.</h2><p>Not everyone who looks familiar belongs here.</p><button id="start-game">ENTER NIGHT SHIFT <span>↗</span></button><small class="footer-note">3D INTERACTIVE PROTOTYPE · HEADPHONES RECOMMENDED</small></div></div>
+  </div>
+  <script type="module" src="/src/3d/main.ts"></script>
+</body>
+</html>
