@@ -246,7 +246,7 @@ function showNightPanel():void{
 }
 function advance():void{
   visitorIndex++;
-  if(visitorIndex>=9){showNightPanel();log("00:00. Shift closed. Route files to police HQ.");return;}
+  if(visitorIndex>=9){clockMinutes=1440;$("clock").textContent="00:00";showNightPanel();log("00:00. Shift closed. Route files to police HQ.");return;}
   clockMinutes=Math.min(1439,360+visitorIndex*115);$("clock").textContent=timeString(clockMinutes);
   visitor=buildVisitor(visitorIndex);updateVisitor();log("Next visitor arrived.");toast("Next visitor is waiting.");
 }

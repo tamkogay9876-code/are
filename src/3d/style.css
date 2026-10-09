@@ -49,7 +49,7 @@ html,body{margin:0;width:100%;height:100%;overflow:hidden}
 .meter-track span{display:block;height:100%;width:50%;background:#bfc89f;transition:width .3s}
 .bottom-hud{bottom:14px;left:14px;right:14px;height:32px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:8px;color:#d1bdc4;letter-spacing:.06em;background:rgba(39,33,45,.95)}
 .dot.cyan{background:#9bc6c2}
-.crosshair{position:absolute;z-index:1;top:50%;left:50%;transform:translate(-50%,-50%);font-size:15px;color:#eee0ca;opacity:.7;pointer-events:none;text-shadow:2px 2px #362b3b}
+
 #toast{position:absolute;z-index:5;left:50%;top:88px;transform:translate(-50%,-6px);opacity:0;pointer-events:none;padding:11px 15px;max-width:min(520px,90vw);background:#342b39;border:2px solid #a98190;color:#f5e2d1;font-size:10px;box-shadow:3px 3px #18131e;transition:opacity .15s,transform .15s}
 #toast.visible{opacity:1;transform:translate(-50%,0)}
 #magnifier{position:absolute;z-index:4;right:25%;top:30%;width:158px;height:158px;border:4px solid #d5c09a;border-radius:50%;background:radial-gradient(circle,rgba(126,177,182,.17),rgba(28,22,33,.91));box-shadow:0 0 0 900px rgba(0,0,0,.1),4px 4px #211923;display:none;align-items:center;justify-content:center;flex-direction:column;gap:8px;image-rendering:pixelated}
