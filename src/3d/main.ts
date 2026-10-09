@@ -1,160 +1,341 @@
 import * as THREE from "three";
-import { PointerLockControls } from "three/addons/controls/PointerLockControls.js";
+import { residents, type Person } from "../data/residents";
+import { createPixelPortraitSprite } from "./pixel-character";
 import "./style.css";
 
-type Resident = {name:string;room:string;id:string;relative:string;neighbor:string;micro:string;color:string};
-type Visitor = Resident & {anomaly:boolean;clue:string};
-const roster:Resident[]=[
-{name:"Maya Chen",room:"101",id:"FAFE-101-8842",relative:"Evan Chen",neighbor:"Jon Bell",micro:"NG-31-B",color:"#78b6ca"},
-{name:"Daniel Carter",room:"203",id:"FAFE-203-7719",relative:"Nora Carter",neighbor:"Park Kim",micro:"NG-28-C",color:"#c9a46d"},
-{name:"Lena Ortiz",room:"207",id:"FAFE-207-5521",relative:"Marisol Ortiz",neighbor:"Ilya Petrov",micro:"NG-42-D",color:"#c986a3"},
-{name:"Ilya Petrov",room:"209",id:"FAFE-209-4910",relative:"Tomas Petrov",neighbor:"Sana Ali",micro:"NG-11-A",color:"#83ad8a"},
-{name:"Sana Ali",room:"301",id:"FAFE-301-6612",relative:"Amina Ali",neighbor:"Theo Marsh",micro:"NG-31-A",color:"#ad98d1"},
-{name:"Theo Marsh",room:"304",id:"FAFE-304-1905",relative:"Clara Marsh",neighbor:"Ruth Vale",micro:"NG-22-B",color:"#8c9bd3"},
-{name:"Ruth Vale",room:"312",id:"FAFE-312-7330",relative:"June Vale",neighbor:"Owen Reed",micro:"NG-14-C",color:"#d5a3a3"},
-{name:"Owen Reed",room:"402",id:"FAFE-402-8451",relative:"Mara Reed",neighbor:"—",micro:"NG-08-D",color:"#d1c08a"}
-];
+type Visitor = Person & { anomaly:boolean; clue:string };
+type Interactive = { object:THREE.Object3D; action:()=>void };
+
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const root=$("game3d");
-const scene=new THREE.Scene();scene.background=new THREE.Color("#070e15");scene.fog=new THREE.FogExp2("#09131c",.035);
-const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.1,90);camera.position.set(0,1.65,5.4);
-const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
-renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.08;root.prepend(renderer.domElement);
-const controls=new PointerLockControls(camera,renderer.domElement);
-const hemi=new THREE.HemisphereLight("#b7d5e4","#10131b",1.4);scene.add(hemi);
-const key=new THREE.DirectionalLight("#a6d9ed",2.1);key.position.set(-3,7,4);key.castShadow=true;key.shadow.mapSize.set(1024,1024);scene.add(key);
-const lampLight=new THREE.PointLight("#e5ad6a",26,7,2);lampLight.position.set(-1.5,2.4,-1);scene.add(lampLight);
-const redLight=new THREE.PointLight("#d63b42",8,3,2);redLight.position.set(3,2.2,-3);scene.add(redLight);
-const mats={
-floor:new THREE.MeshStandardMaterial({color:"#222b30",roughness:.88}),
-wall:new THREE.MeshStandardMaterial({color:"#293b43",roughness:.9}),
-dark:new THREE.MeshStandardMaterial({color:"#10191f",roughness:.68}),
-wood:new THREE.MeshStandardMaterial({color:"#5d3b27",roughness:.68}),
-edge:new THREE.MeshStandardMaterial({color:"#91623d",roughness:.55}),
-screen:new THREE.MeshStandardMaterial({color:"#07191f",emissive:"#124956",emissiveIntensity:1.5,metalness:.2,roughness:.25}),
-cyan:new THREE.MeshStandardMaterial({color:"#68d8e9",emissive:"#218da1",emissiveIntensity:1.4}),
-red:new THREE.MeshStandardMaterial({color:"#d64b47",emissive:"#7a1015",emissiveIntensity:1.3}),
-paper:new THREE.MeshStandardMaterial({color:"#d7ddce",roughness:.85}),
-coat:new THREE.MeshStandardMaterial({color:"#172e34",roughness:.9}),
-skin:new THREE.MeshStandardMaterial({color:"#a96e4c",roughness:.92}),
-plant:new THREE.MeshStandardMaterial({color:"#2b6944",roughness:.9}),
-metal:new THREE.MeshStandardMaterial({color:"#77878b",metalness:.7,roughness:.35})
+const scene=new THREE.Scene();
+scene.background=new THREE.Color("#171621");
+scene.fog=new THREE.Fog("#171621",14,28);
+const camera=new THREE.PerspectiveCamera(48,innerWidth/innerHeight,.1,70);
+camera.position.set(0,2.55,7.9);
+camera.lookAt(0,1.55,-1.9);
+
+// Render internally at a deliberately small resolution; CSS enlarges it with nearest-neighbour sampling.
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
+renderer.setPixelRatio(1);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.NoToneMapping;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.domElement.className="pixel-scene";
+renderer.domElement.style.imageRendering="pixelated";
+root.prepend(renderer.domElement);
+
+function resize():void {
+  const scale=3;
+  const w=Math.max(320,Math.floor(innerWidth/scale));
+  const h=Math.max(180,Math.floor(innerHeight/scale));
+  renderer.setSize(w,h,false);
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener("resize",resize);
+
+const ambient=new THREE.HemisphereLight("#d5c9ce","#241c2b",1.2);scene.add(ambient);
+const key=new THREE.DirectionalLight("#e7d2bc",1.25);key.position.set(-3,7,4);key.castShadow=true;scene.add(key);
+const deskLamp=new THREE.PointLight("#f2bd80",1.5,7);deskLamp.position.set(-1.5,2.35,-.8);scene.add(deskLamp);
+const warningLight=new THREE.PointLight("#d34450",.65,4);warningLight.position.set(2.5,2,-3.4);scene.add(warningLight);
+
+const material=(color:string,roughness=1,extra:Partial<THREE.MeshStandardMaterialParameters>={})=>new THREE.MeshStandardMaterial({color,roughness,flatShading:true,...extra});
+const MAT={
+  wall:material("#514451"),wallLight:material("#796172"),floor:material("#51434a"),
+  dark:material("#292630"),black:material("#171820"),wood:material("#67443b"),
+  woodLight:material("#94634f"),metal:material("#65646b",.86,{metalness:.15}),
+  paper:material("#d8c8ad"),paperShade:material("#b3a48d"),
+  screen:material("#172f38",.8,{emissive:"#234954",emissiveIntensity:.6}),
+  screenLight:material("#74c0c2",.8,{emissive:"#2c787e",emissiveIntensity:.65}),
+  red:material("#b84c52",.8,{emissive:"#57151f",emissiveIntensity:.35}),
+  plant:material("#557652"),gold:material("#b29469",.8,{metalness:.18}),
+  glass:material("#8dabb4",.35,{transparent:true,opacity:.35}),
+  outline:material("#241d29")
 };
-const interactables:{object:THREE.Object3D;name:string;action:()=>void}[]=[];
-function box(name:string,pos:THREE.Vector3|[number,number,number],size:[number,number,number],material:THREE.Material,cast=true,receive=true){
- const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),material);mesh.name=name;mesh.position.set(...(pos instanceof THREE.Vector3?pos.toArray():pos));mesh.castShadow=cast;mesh.receiveShadow=receive;scene.add(mesh);return mesh;
-}
-function cyl(name:string,pos:[number,number,number],r:number,h:number,material:THREE.Material,segments=16){
- const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),material);mesh.name=name;mesh.position.set(...pos);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);return mesh;
-}
-function sphere(name:string,pos:[number,number,number],scale:[number,number,number],material:THREE.Material,segments=12){
- const mesh=new THREE.Mesh(new THREE.SphereGeometry(1,segments,Math.max(6,Math.floor(segments*.65))),material);mesh.name=name;mesh.position.set(...pos);mesh.scale.set(...scale);mesh.castShadow=true;scene.add(mesh);return mesh;
-}
-function label(text:string,pos:[number,number,number],color="#8de9f4",size=.13){
- const canvas=document.createElement("canvas");canvas.width=512;canvas.height=128;const ctx=canvas.getContext("2d")!;
- ctx.clearRect(0,0,512,128);ctx.font="bold 48px monospace";ctx.fillStyle=color;ctx.fillText(text,12,78);
- const tex=new THREE.CanvasTexture(canvas);tex.colorSpace=THREE.SRGBColorSpace;
- const plane=new THREE.Mesh(new THREE.PlaneGeometry(size*4,size),new THREE.MeshBasicMaterial({map:tex,transparent:true,side:THREE.DoubleSide,depthWrite:false}));
- plane.position.set(...pos);scene.add(plane);return plane;
-}
-// A compact, walkable security booth. Every prop is a real Three.js mesh.
-box("floor",[0,-.12,0],[10,.24,9],mats.floor);
-box("back-wall",[0,2.1,-4.45],[10,4.2,.18],mats.wall);
-box("left-wall",[-4.95,2.1,0],[.18,4.2,9],mats.wall);
-box("right-wall",[4.95,2.1,0],[.18,4.2,9],mats.wall);
-box("ceiling",[0,4.2,0],[10,.12,9],mats.dark);
-box("secure-door-frame",[1.1,1.45,-4.28],[1.55,2.9,.28],mats.dark);
-box("secure-door",[1.1,1.42,-4.08],[1.35,2.7,.13],mats.wood);
-box("door-window",[1.1,2.05,-3.99],[.65,.5,.035],mats.screen);
-box("door-handle",[1.63,1.25,-3.96],[.06,.28,.06],mats.metal);
-box("desk-top",[0,1.05,-.5],[3.9,.16,1.45],mats.wood);
-box("desk-front",[0,.61,.15],[3.7,.72,.13],mats.edge);
-for(const x of [-1.65,1.65])box("desk-leg",[x,.42,-.5],[.22,.84,1.18],mats.wood);
-box("monitor-shell",[0,1.72,-1.05],[1.35,.92,.16],mats.dark);
-box("monitor-glass",[0,1.72,-.955],[1.2,.75,.025],mats.screen,false);
-label("NORTHGATE // 998",[-.56,1.82,-.93],"#77e3f2",.14);
-box("keyboard",[0,1.16,-.02],[.8,.06,.28],mats.dark);
-for(let i=0;i<12;i++)box("keyboard-key",[-.34+(i%6)*.135,1.2,-.1+Math.floor(i/6)*.1],[.08,.015,.05],i%4===0?mats.cyan:mats.edge,false);
-const phone=box("emergency-phone",[1.05,1.19,-.35],[.52,.12,.42],mats.dark);
-box("phone-display",[1.05,1.258,-.35],[.3,.018,.12],mats.red,false);
-for(let i=0;i<12;i++)cyl("phone-key",[.89+(i%3)*.16,1.275,-.46+Math.floor(i/3)*.07],.022,.018,mats.paper,12);
-const handset=box("phone-handset",[1.05,1.35,-.23],[.45,.075,.07],mats.metal);
-sphere("phone-earpiece-left",[.84,1.35,-.23],[.075,.065,.075],mats.dark);
-sphere("phone-earpiece-right",[1.26,1.35,-.23],[.075,.065,.075],mats.dark);
-label("998",[.8,1.43,-.02],"#ff7671",.11);
-const id=box("resident-id",[-.8,1.18,-.25],[.7,.045,.45],mats.paper);
-box("id-photo",[-1.02,1.208,-.23],[.14,.012,.18],mats.coat,false);
-for(let i=0;i<3;i++)box("id-line",[-.79,1.21,-.17+i*.07],[.28-i*.03,.012,.025],mats.dark,false);
-const magnifier=new THREE.Group();magnifier.name="magnifier";
-const lens=new THREE.Mesh(new THREE.TorusGeometry(.16,.025,8,24),mats.metal);lens.position.set(-1.45,1.24,-.45);magnifier.add(lens);
-const lensGlass=new THREE.Mesh(new THREE.CircleGeometry(.15,24),new THREE.MeshPhysicalMaterial({color:"#71d8e9",transparent:true,opacity:.25,roughness:.12,metalness:.25}));lensGlass.position.set(-1.45,1.24,-.46);magnifier.add(lensGlass);
-const handle=box("magnifier-handle",[-1.34,1.15,-.45],[.07,.3,.07],mats.metal);magnifier.add(handle);scene.add(magnifier);
-const lamp=cyl("desk-lamp-base",[-1.55,1.18,-1.05],.18,.06,mats.metal,24);
-cyl("desk-lamp-stem",[-1.55,1.48,-1.05],.035,.56,mats.metal);
-sphere("desk-lamp-shade",[-1.55,1.79,-1.05],[.22,.12,.2],mats.edge);
-const pot=cyl("plant-pot",[-3.35,.3,-2.3],.23,.52,mats.edge,8);
-for(let i=0;i<7;i++){const a=i*2.399;const leaf=sphere("plant-leaf",[-3.35+Math.cos(a)*.15,.7+(i%3)*.07,-2.3+Math.sin(a)*.15],[.07,.25,.07],mats.plant,8);leaf.rotation.z=Math.cos(a)*.65;leaf.rotation.x=Math.sin(a)*.65;}
-box("cabinet",[-3.5,.65,-.3],[.9,1.3,.85],mats.wood);
-for(let i=0;i<3;i++){box("drawer",[-3.5,.3+i*.34,.145],[.76,.24,.035],mats.edge);box("drawer-pull",[-3.5,.3+i*.34,.18],[.2,.035,.035],mats.metal);}
-box("operator-chair-seat",[0,.72,1.55],[.75,.16,.72],mats.coat);
-box("operator-chair-back",[0,1.22,1.9],[.75,.82,.14],mats.coat);
-cyl("operator-chair-pole",[0,.37,1.55],.065,.55,mats.metal);
-for(let i=0;i<5;i++){const a=i*Math.PI*2/5;box("chair-base-leg",[Math.cos(a)*.34,.12,1.55+Math.sin(a)*.34],[.48,.05,.07],mats.metal);}
-box("wall-sign",[-2.9,2.85,-4.32],[1.65,.78,.08],mats.dark);
-label("AUTHORIZED ONLY",[-3.58,2.9,-4.26],"#e7c98c",.1);
-const cameraProp=box("security-camera",[4.7,3.25,-3.8],[.3,.16,.22],mats.dark);
-sphere("security-camera-lens",[4.52,3.23,-3.67],[.055,.055,.035],mats.cyan);
-const warning=cyl("warning-beacon",[3.4,2.8,-3.8],.11,.2,mats.red,16);
-// A low-poly resident stands outside the desk. Click to inspect.
-const visitorGroup=new THREE.Group();visitorGroup.name="resident-character";scene.add(visitorGroup);visitorGroup.position.set(1.1,0,-3.2);
-const body=new THREE.Mesh(new THREE.BoxGeometry(.62,.75,.35),mats.coat);body.position.y=1.25;body.castShadow=true;visitorGroup.add(body);
-const head=sphere("visitor-head",[0,1.83,0],[.24,.29,.24],mats.skin);visitorGroup.add(head);
-const neck=cyl("visitor-neck",[0,1.57,0],.085,.17,mats.skin,10);visitorGroup.add(neck);
-for(const side of [-1,1]){
- const leg=box("visitor-leg",[side*.17,.62,0],[.2,.55,.23],mats.dark);visitorGroup.add(leg);
- const shoe=box("visitor-shoe",[side*.17,.31,.09],[.24,.14,.36],mats.dark);visitorGroup.add(shoe);
- const arm=box("visitor-arm",[side*.42,1.28,0],[.17,.57,.2],mats.coat);arm.rotation.z=side*.08;visitorGroup.add(arm);
- const hand=sphere("visitor-hand",[side*.43,.96,0],[.075,.09,.075],mats.skin);visitorGroup.add(hand);
- const eye=sphere("visitor-eye",[side*.09,1.88,.218],[.028,.025,.018],mats.paper,8);visitorGroup.add(eye);
-}
-label("VISITOR / CHECK ID",[.35,2.3,-3.0],"#9de7f2",.11);
-for(const [x,z] of [[-3,-3],[3,-3],[-3,2],[3,2]] as [number,number][])box("floor-light",[x,.012,z],[.55,.018,.55],mats.dark,false);
-for(const [x,z] of [[-3,-3],[3,-3],[-3,2],[3,2]] as [number,number][])box("floor-light-core",[x,.025,z],[.3,.01,.3],mats.cyan,false);
 
-interactables.push({object:phone,name:"Emergency telephone",action:()=>call998()});
-interactables.push({object:id,name:"Resident identity card",action:()=>inspectID()});
-interactables.push({object:visitorGroup,name:"Incoming resident",action:()=>toast("Compare the visitor with the verified records.")});
-interactables.push({object:monitorProp(),name:"Security terminal",action:()=>toast("TERMINAL: Resident directory loaded. Check ID, relative, neighbor and microcode.")});
-function monitorProp(){return scene.getObjectByName("monitor-glass")!;}
-
-let visitor:Visitor;let visitorIndex=0;let clockMinutes=360;let trust=50;let shiftStarted=false;let isMagnifying=false;let walkSpeed=3.1;
-const keys=new Set<string>();const raycaster=new THREE.Raycaster();const mouse=new THREE.Vector2();let toastTimer=0;
-function toast(message:string){$("toast").textContent=message;$("toast").classList.add("visible");clearTimeout(toastTimer);toastTimer=window.setTimeout(()=>$("toast").classList.remove("visible"),2600);}
-function addEvidence(message:string){const line=document.createElement("p");line.className="log-entry";line.textContent="["+String(Math.floor(clockMinutes/60)%24).padStart(2,"0")+":"+String(clockMinutes%60).padStart(2,"0")+"] "+message;$("evidence").prepend(line);while($("evidence").children.length>6)$("evidence").lastElementChild?.remove();}
-function updateVisitorUI(){
- $("visitor-name").textContent=visitor.name;$("visitor-room").textContent="ROOM "+visitor.room;$("visitor-avatar").textContent=visitor.name.split(" ").map(v=>v[0]).join("");
- $("id-record").textContent=visitor.id;$("relative-record").textContent=visitor.relative;$("neighbor-record").textContent=visitor.neighbor;$("micro-record").textContent=visitor.micro;$("magnifier-code").textContent=visitor.micro;
+function box(name:string,pos:[number,number,number],size:[number,number,number],mat:THREE.Material,outline=false):THREE.Mesh {
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size),mat);
+  mesh.name=name;mesh.position.set(...pos);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+  if(outline){
+    const edges=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry),new THREE.LineBasicMaterial({color:"#28212a"}));
+    edges.name=name+"_ink";edges.position.copy(mesh.position);edges.rotation.copy(mesh.rotation);edges.scale.copy(mesh.scale);scene.add(edges);
+  }
+  return mesh;
 }
-function newVisitor(){const r=roster[visitorIndex%roster.length];visitor={...r,anomaly:Math.random()<.38,clue:""};if(visitor.anomaly){const clues=["id","relative","neighbor","micro"];visitor.clue=clues[Math.floor(Math.random()*clues.length)];if(visitor.clue==="id")visitor.id=visitor.id.slice(0,-1)+String((Number(visitor.id.slice(-1))+1)%10);if(visitor.clue==="relative")visitor.relative="RECORD NOT FOUND";if(visitor.clue==="neighbor")visitor.neighbor="ROOM 000";if(visitor.clue==="micro")visitor.micro="NG-99-X";}
- updateVisitorUI();visitorGroup.traverse(o=>{if(o instanceof THREE.Mesh&&o.material===mats.coat)o.material=visitor.anomaly?new THREE.MeshStandardMaterial({color:"#35232b",roughness:.9}):mats.coat;});}
-function advance(){visitorIndex++;clockMinutes=Math.min(1439,360+visitorIndex*118);$("clock").textContent=String(Math.floor(clockMinutes/60)).padStart(2,"0")+":"+String(clockMinutes%60).padStart(2,"0");newVisitor();}
-function decide(allow:boolean){if(!shiftStarted)return;const correct=(allow&&!visitor.anomaly)||(!allow&&visitor.anomaly);trust=Math.max(0,Math.min(100,trust+(correct?4:-9)));$("trust-value").textContent=trust+"%";$("trust-bar").style.width=trust+"%";addEvidence(visitor.name+" — "+(allow?"ALLOW":"DENY")+" — "+(correct?"DECISION MATCHED":"DECISION FAILED"));toast(correct?(allow?"Identity accepted. Entry authorized.":"Anomaly kept outside. Good catch."):"That decision contradicts the verified record.");advance();}
-function call998(){if(!shiftStarted)return;addEvidence("998 called. F.A.F.E. unit dispatched for "+visitor.name+".");toast("F.A.F.E. dispatch acknowledged. Verifying visitor…");window.setTimeout(()=>{if(visitor.anomaly){trust=Math.min(100,trust+3);toast("F.A.F.E. confirmed an anomaly. Building secured.");}else{trust=Math.max(0,trust-8);toast("F.A.F.E. found no anomaly. False report recorded.");} $("trust-value").textContent=trust+"%";$("trust-bar").style.width=trust+"%";advance();},900);}
-function inspectID(){isMagnifying=!isMagnifying;$("magnifier").classList.toggle("visible",isMagnifying);toast(isMagnifying?"Magnifier engaged. Check the microcode.":"Magnifier stowed.");}
-function start(){shiftStarted=true;$("start-overlay").classList.add("hidden");newVisitor();controls.lock();toast("Shift started. Check the records before deciding.");}
-$("start-game").addEventListener("click",start);
-$("allow").addEventListener("click",()=>decide(true));$("deny").addEventListener("click",()=>decide(false));$("call998").addEventListener("click",call998);$("inspect").addEventListener("click",inspectID);
-renderer.domElement.addEventListener("click",()=>{if(shiftStarted&&!controls.isLocked)controls.lock();});
-controls.addEventListener("lock",()=>{$("controls-state").textContent="LOOK MODE ACTIVE";});
-controls.addEventListener("unlock",()=>{$("controls-state").textContent="CLICK THE SCENE TO LOOK AROUND";});
-window.addEventListener("keydown",e=>{keys.add(e.code);if(e.repeat)return;if(e.code==="KeyA")decide(true);if(e.code==="KeyD")decide(false);if(e.code==="KeyF")call998();if(e.code==="KeyI")inspectID();});
-window.addEventListener("keyup",e=>keys.delete(e.code));
-renderer.domElement.addEventListener("pointerdown",e=>{if(!shiftStarted||!controls.isLocked)return;mouse.x=(e.clientX/innerWidth)*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;raycaster.setFromCamera(mouse,camera);const hits=raycaster.intersectObjects(interactables.map(x=>x.object),true);if(hits.length){let hit:THREE.Object3D|null=hits[0].object;while(hit&&!interactables.some(x=>x.object===hit))hit=hit.parent;const item=interactables.find(x=>x.object===hit);item?.action();}});
-window.addEventListener("contextmenu",e=>e.preventDefault());
-window.addEventListener("mousedown",e=>{if(e.button===2&&shiftStarted)inspectID();});
-window.addEventListener("resize",()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
-const clock=new THREE.Clock();const move=new THREE.Vector3();const forward=new THREE.Vector3();const right=new THREE.Vector3();
-function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);if(controls.isLocked){forward.set(0,0,-1).applyQuaternion(camera.quaternion);forward.y=0;forward.normalize();right.set(1,0,0).applyQuaternion(camera.quaternion);right.y=0;right.normalize();move.set(0,0,0);if(keys.has("KeyW"))move.add(forward);if(keys.has("KeyS"))move.sub(forward);if(keys.has("KeyD"))move.add(right);if(keys.has("KeyA"))move.sub(right);if(move.lengthSq())move.normalize().multiplyScalar(walkSpeed*dt);camera.position.add(move);camera.position.x=THREE.MathUtils.clamp(camera.position.x,-4.5,4.5);camera.position.z=THREE.MathUtils.clamp(camera.position.z,-4.0,4.0);camera.position.y=1.65;}
- const t=performance.now()*.001;lampLight.intensity=24+Math.sin(t*2.7)*1.2;redLight.intensity=7+Math.sin(t*4)*1.1;visitorGroup.position.y=Math.sin(t*1.2)*.012;renderer.render(scene,camera);}
-animate();newVisitor();
+function cylinder(name:string,pos:[number,number,number],r:number,h:number,mat:THREE.Material,segments=8):THREE.Mesh {
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),mat);
+  mesh.name=name;mesh.position.set(...pos);mesh.castShadow=true;scene.add(mesh);return mesh;
+}
+function sphere(name:string,pos:[number,number,number],size:[number,number,number],mat:THREE.Material):THREE.Mesh {
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(1,8,6),mat);mesh.name=name;mesh.position.set(...pos);mesh.scale.set(...size);mesh.castShadow=true;scene.add(mesh);return mesh;
+}
+function label(text:string,pos:[number,number,number],color="#302630"):THREE.Mesh {
+  const canvas=document.createElement("canvas");canvas.width=128;canvas.height=24;
+  const ctx=canvas.getContext("2d")!;ctx.imageSmoothingEnabled=false;ctx.fillStyle=color;ctx.font="bold 10px monospace";ctx.fillText(text,3,16);
+  const texture=new THREE.CanvasTexture(canvas);texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.NearestFilter;texture.colorSpace=THREE.SRGBColorSpace;
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(1.6,.3),new THREE.MeshBasicMaterial({map:texture,transparent:true,side:THREE.DoubleSide}));
+  mesh.name="SIGN_"+text.replace(/[^A-Z0-9]+/gi,"_");mesh.position.set(...pos);scene.add(mesh);return mesh;
+}
+
+// ROOM: painted mauve walls, dark floor, trim, and a framed visitor window.
+// Geometry stays genuinely 3D; the camera is fixed like a desk-inspection game.
+box("ENV_floor",[0,-.13,0],[10,.26,10],MAT.floor,true);
+box("ENV_back_wall",[0,2.1,-4.55],[10,4.2,.18],MAT.wall,true);
+box("ENV_left_wall",[-4.95,2.1,0],[.18,4.2,9.2],MAT.wall,true);
+box("ENV_right_wall",[4.95,2.1,0],[.18,4.2,9.2],MAT.wall,true);
+box("ENV_left_wall_paint",-4 as unknown as [number,number,number],[1,1,1],MAT.wallLight); // kept away from focal area by scene framing
+// Visitor window is staged as a framed opening in the back wall.
+box("ENV_window_backing",[-.72,2.05,-4.38],[3.0,2.56,.12],MAT.wallLight,true);
+box("ENV_window_inner",[-.72,2.05,-4.29],[2.72,2.28,.035],MAT.dark);
+box("ENV_window_glass",[-.72,2.05,-4.20],[2.52,2.08,.02],MAT.glass);
+box("ENV_window_top",[-.72,3.35,-4.08],[3.12,.16,.3],MAT.metal,true);
+box("ENV_window_bottom",[-.72,.75,-4.08],[3.12,.16,.3],MAT.metal,true);
+box("ENV_window_left",[-2.20,2.05,-4.08],[.16,2.48,.3],MAT.metal,true);
+box("ENV_window_right",[.76,2.05,-4.08],[.16,2.48,.3],MAT.metal,true);
+box("ENV_window_sill",[-.72,.66,-3.91],[3.05,.18,.5],MAT.woodLight,true);
+
+// Original pixel character sprite, billboarded in the 3D window.
+let visitorSprite=createPixelPortraitSprite("#3b596b");
+visitorSprite.position.set(-.72,.83,-4.02);scene.add(visitorSprite);
+const visitorShadow=box("CHAR_shadow",[-.72,.03,-3.94],[.8,.035,.15],MAT.dark);
+visitorShadow.material=material("#312a35",1,{transparent:true,opacity:.5});
+
+// Security notices and folders in the background.
+box("ENV_notice_board",[3.28,2.35,-4.34],[2.35,2.1,.12],MAT.dark,true);
+box("ENV_notice_paper",[3.28,2.35,-4.25],[2.05,1.82,.025],MAT.paper,true);
+for(let i=0;i<5;i++)box("ENV_notice_rule",[3.18,2.95-i*.27,-4.22],[1.48,.025,.02],MAT.paperShade);
+label("IDENTITY / 998",[2.65,3.11,-4.19]);
+box("ENV_warning_plate",[3.25,.9,-4.29],[1.5,.47,.08],MAT.red,true);
+label("CHECK TWICE",[2.61,.89,-4.23],"#f2dfbc");
+box("ENV_side_door",[4.45,1.43,-2.45],[.48,2.85,.12],MAT.wood,true);
+box("ENV_side_door_glass",[4.44,2.05,-2.37],[.27,.58,.025],MAT.screen);
+cylinder("ENV_door_knob",[4.15,1.35,-2.32],.05,.07,MAT.gold,8);
+for(let x=-4;x<=4;x+=2)box("ENV_baseboard",[x,.12,-4.42],[1.9,.18,.08],MAT.dark);
+
+// Desk foreground: thick, angled edges make the geometry read like a low-poly diorama.
+box("PRP_desk_top",[0,.99,-.05],[4.35,.18,1.7],MAT.wood,true);
+box("PRP_desk_front",[0,.55,.72],[4.08,.72,.18],MAT.woodLight,true);
+box("PRP_desk_left_leg",[-1.83,.40,-.02],[.22,.8,1.32],MAT.wood,true);
+box("PRP_desk_right_leg",[1.83,.40,-.02],[.22,.8,1.32],MAT.wood,true);
+box("PRP_desk_dark_inset",[0,.60,.815],[2.65,.42,.025],MAT.wood);
+box("PRP_desk_edge_highlight",[0,1.09,.70],[4.1,.045,.08],MAT.gold);
+
+// Terminal with chunky pixel lettering.
+box("PRP_monitor_shell",[0,1.66,-.76],[1.45,.91,.20],MAT.dark,true);
+box("PRP_monitor_bezel",[0,1.66,-.645],[1.29,.75,.03],MAT.woodLight);
+box("PRP_monitor_glass",[0,1.67,-.62],[1.17,.63,.025],MAT.screen);
+label("NORTHGATE / 998",[-.66,1.83,-.59],"#9bd3cf");
+for(let i=0;i<4;i++)box("PRP_monitor_line",[-.32,1.55-i*.09,-.585],[.46-(i%2)*.12,.025,.012],MAT.screenLight);
+cylinder("PRP_monitor_stand",[0,1.20,-.72],.07,.35,MAT.metal,8);
+box("PRP_monitor_base",[0,1.16,-.72],[.56,.05,.26],MAT.metal);
+box("PRP_keyboard",[0,1.105,.12],[.93,.07,.32],MAT.dark,true);
+for(let i=0;i<18;i++)box("PRP_keyboard_key",[-.40+(i%9)*.10,1.15,.025+Math.floor(i/9)*.13],[.065,.018,.06],i%7===0?MAT.screenLight:MAT.woodLight);
+
+// Telephone 998. This is a mesh-built prop, not a flat icon.
+const phone=box("PRP_phone_base",[1.30,1.12,-.12],[.62,.14,.48],MAT.dark,true);
+box("PRP_phone_face",[1.30,1.205,-.12],[.49,.025,.34],MAT.woodLight);
+box("PRP_phone_display",[1.30,1.225,-.05],[.27,.018,.08],MAT.red);
+label("998",[1.13,1.23,-.015],"#f9d9bb");
+for(let i=0;i<12;i++)cylinder("PRP_phone_key",[1.14+(i%3)*.16,1.235,-.22+Math.floor(i/3)*.07],.022,.02,MAT.paper,8);
+box("PRP_phone_handset",[1.30,1.34,-.32],[.47,.075,.08],MAT.metal,true);
+sphere("PRP_phone_earpiece_l",[1.08,1.34,-.32],[.085,.08,.075],MAT.dark);
+sphere("PRP_phone_earpiece_r",[1.52,1.34,-.32],[.085,.08,.075],MAT.dark);
+
+// ID card and magnifier.
+const id=box("PRP_resident_ID",[-1.03,1.11,-.18],[.78,.045,.52],MAT.paper,true);
+box("PRP_id_photo",[-1.28,1.14,-.12],[.15,.012,.23],MAT.wood);
+for(let i=0;i<4;i++)box("PRP_id_line",[-.98,1.14,-.32+i*.10],[.30-(i%2)*.08,.012,.02],MAT.dark);
+box("PRP_id_barcode",[-.99,1.14,-.39],[.35,.012,.025],MAT.dark);
+const lens=new THREE.Mesh(new THREE.TorusGeometry(.17,.035,5,12),MAT.gold);lens.name="PRP_magnifier_ring";lens.position.set(-1.72,1.14,-.28);scene.add(lens);
+const lensGlass=new THREE.Mesh(new THREE.CircleGeometry(.145,12),new THREE.MeshBasicMaterial({color:"#82c5cd",transparent:true,opacity:.32}));lensGlass.position.set(-1.72,1.14,-.295);scene.add(lensGlass);
+box("PRP_magnifier_handle",[-1.57,1.01,-.26],[.065,.27,.07],MAT.gold,true);
+
+// Other familiar desk props.
+cylinder("PRP_lamp_base",[-1.75,1.12,-.91],.17,.05,MAT.metal,8);
+cylinder("PRP_lamp_stem",[-1.75,1.41,-.91],.035,.55,MAT.gold,8);
+sphere("PRP_lamp_shade",[-1.75,1.69,-.91],[.22,.12,.18],MAT.woodLight);
+box("PRP_case_folder",[1.9,1.11,-.42],[.45,.035,.55],MAT.paper,true);
+box("PRP_case_label",[1.9,1.135,-.42],[.26,.01,.09],MAT.red);
+cylinder("PRP_alarm_button",[2.0,1.18,-.03],.13,.12,MAT.red,12);
+cylinder("PRP_alarm_button_cap",[2.0,1.25,-.03],.09,.045,MAT.red,12);
+cylinder("PRP_plant_pot",[-3.25,.35,-1.6],.23,.48,MAT.woodLight,8);
+for(let i=0;i<7;i++){const a=i*2.399;const leaf=sphere("PRP_plant_leaf",[-3.25+Math.cos(a)*.15,.68+(i%3)*.08,-1.6+Math.sin(a)*.15],[.075,.24,.075],MAT.plant);leaf.rotation.z=Math.cos(a)*.45;leaf.rotation.x=Math.sin(a)*.45;}
+box("PRP_calendar_frame",[3.35,1.3,-4.18],[1.1,.6,.06],MAT.dark,true);
+box("PRP_calendar_paper",[3.35,1.3,-4.13],[.97,.49,.025],MAT.paper);
+label("NORTHGATE  /  OCT",[2.91,1.34,-4.10]);
+
+// Camera and semantic hotspots.
+const interactives:Interactive[]=[];
+function addHotspot(obj:THREE.Object3D,action:()=>void){interactives.push({object:obj,action});}
+let visitor:Visitor;
+let visitorIndex=0;
+let clockMinutes=360;
+let trust=50;
+let shiftStarted=false;
+let magnified=false;
+let phase:"day"|"night"="day";
+let ammo=1;
+let fuel=100;
+let tires=100;
+const raycaster=new THREE.Raycaster();
+const pointer=new THREE.Vector2();
+
+function toast(message:string):void{
+  const node=$("toast");node.textContent=message;node.classList.add("visible");
+  window.setTimeout(()=>node.classList.remove("visible"),2300);
+}
+function timeString(n:number):string{return String(Math.floor(n/60)%24).padStart(2,"0")+":"+String(n%60).padStart(2,"0");}
+function log(message:string):void{
+  const entry=document.createElement("p");entry.className="log-entry";
+  entry.textContent="["+timeString(clockMinutes)+"] "+message;
+  $("evidence").prepend(entry);while($("evidence").children.length>5)$("evidence").lastElementChild?.remove();
+}
+function buildVisitor(index:number):Visitor{
+  const p=residents[index%residents.length];
+  const anomaly=Math.random()<Math.min(.58,.28+index*.025);
+  const v:Visitor={...p,anomaly,clue:"NONE"};
+  if(anomaly){
+    const choices=["ID NUMBER MISMATCH","RELATIVE NOT IN DATABASE","NEIGHBOR RECORD MISMATCH","MICROCODE ANOMALY"];
+    v.clue=choices[Math.floor(Math.random()*choices.length)];
+    if(v.clue===choices[0])v.id=v.id.slice(0,-1)+String((Number(v.id.slice(-1))+1)%10);
+    else if(v.clue===choices[1])v.relative="NO VERIFIED RECORD";
+    else if(v.clue===choices[2])v.neighbor="ROOM 000";
+    else v.micro="NG-99-X";
+  }
+  return v;
+}
+function updateVisitor():void{
+  $("visitor-name").textContent=visitor.name;
+  $("visitor-room").textContent="UNIT "+visitor.room;
+  $("visitor-avatar").textContent=visitor.name.split(" ").map(n=>n[0]).join("");
+  $("id-record").textContent=visitor.id;
+  $("relative-record").textContent=visitor.relative;
+  $("neighbor-record").textContent=visitor.neighbor;
+  $("micro-record").textContent=visitor.micro;
+  $("magnifier-code").textContent=visitor.micro;
+  visitorSprite.material=visitorSprite.material as THREE.SpriteMaterial;
+  const oldMat=visitorSprite.material as THREE.SpriteMaterial;
+  const newSprite=createPixelPortraitSprite(visitor.color);
+  visitorSprite.material=newSprite.material;
+  visitorSprite.scale.copy(newSprite.scale);visitorSprite.center.copy(newSprite.center);
+  // Release the texture from the previous resident to avoid leaking GPU resources.
+  oldMat.map?.dispose();oldMat.dispose();
+}
+function setTrust(amount:number):void{
+  trust=THREE.MathUtils.clamp(trust+amount,0,100);
+  $("trust-value").textContent=trust+"%";$("trust-bar").style.width=trust+"%";
+}
+function showNightPanel():void{
+  phase="night";$("phase-title").textContent="A road with no signal.";
+  $("status-copy").textContent="The police station is three hours away. The radio has started whispering.";
+  $("records").innerHTML='<div><span>FUEL</span><b id="fuel-record">100%</b></div><div><span>TIRES</span><b id="tire-record">100%</b></div><div><span>SHOTGUN</span><b id="ammo-record">1 shell</b></div><div><span>ROUTE</span><b>POLICE HQ</b></div>';
+  $("action-buttons").innerHTML='<button id="drive" class="primary">DRIVE 10 MIN <kbd>W</kbd></button><button id="radio" class="danger">CHECK RADIO <kbd>R</kbd></button><button id="fire" class="wide">USE SHOTGUN <kbd>F</kbd></button><button id="hq" class="wide ghost">ARRIVE AT HQ <kbd>H</kbd></button>';
+  const nightMat=material("#080b17");
+  scene.background=new THREE.Color("#080b17");scene.fog=new THREE.Fog("#080b17",7,20);
+  deskLamp.intensity=.15;warningLight.intensity=.2;
+  // The scene remains fixed-camera; the outside/window becomes a stylized night vignette.
+  box("NIGHT_window_dark",[-.72,2.05,-4.16],[2.45,2.0,.025],nightMat);
+  for(let i=0;i<9;i++)box("NIGHT_distant_building",[ -4.4+i*1.1, .65+(i%3)*.35,-4.0],[.62,1.3+(i%3)*.7,.06],nightMat);
+  $("drive").addEventListener("click",driveStep);
+  $("radio").addEventListener("click",radioStep);
+  $("fire").addEventListener("click",fireStep);
+  $("hq").addEventListener("click",arriveHQ);
+}
+function advance():void{
+  visitorIndex++;
+  if(visitorIndex>=9){showNightPanel();log("00:00. Shift closed. Route files to police HQ.");return;}
+  clockMinutes=Math.min(1439,360+visitorIndex*115);$("clock").textContent=timeString(clockMinutes);
+  visitor=buildVisitor(visitorIndex);updateVisitor();log("Next visitor arrived.");toast("Next visitor is waiting.");
+}
+function decision(allow:boolean):void{
+  if(!shiftStarted||phase!=="day")return;
+  const correct=(allow&&!visitor.anomaly)||(!allow&&visitor.anomaly);
+  setTrust(correct?4:-10);
+  log(visitor.name+" — "+(allow?"ENTRY ALLOWED":"ENTRY DENIED")+" — "+(correct?"DECISION CORRECT":"DECISION WRONG"));
+  toast(correct?(allow?"Identity accepted. Entry permitted.":"Anomaly stopped at the door."):"The records contradict your decision.");
+  advance();
+}
+function call998():void{
+  if(!shiftStarted||phase!=="day")return;
+  const reported=visitor;
+  log("998 dialled. F.A.F.E. dispatched for "+reported.name+".");
+  toast("F.A.F.E. response acknowledged…");
+  $("call998").setAttribute("disabled","true");
+  window.setTimeout(()=>{
+    $("call998").removeAttribute("disabled");
+    if(reported.anomaly){setTrust(3);toast("F.A.F.E. confirmed the discrepancy.");log("F.A.F.E. confirmed anomaly: "+reported.clue+".");}
+    else{setTrust(-8);toast("False report. No discrepancy detected.");log("F.A.F.E. reported a false call.");}
+    advance();
+  },650);
+}
+function inspectID():void{
+  magnified=!magnified;$("magnifier").classList.toggle("visible",magnified);
+  toast(magnified?"ID magnifier active. Compare the microcode.":"Magnifier closed.");
+}
+function driveStep():void{
+  if(phase!=="night")return;
+  clockMinutes+=10;fuel=Math.max(0,fuel-5);if(Math.random()<.22)tires=Math.max(0,tires-18);
+  $("clock").textContent=timeString(1440+clockMinutes-1440);
+  $("fuel-record").textContent=fuel+"%";$("tire-record").textContent=tires+"%";
+  const events=["RADIO STATIC: something is pacing the car.","The road sign names a town that does not exist.","Your headlights catch a figure standing in the lane.","The GPS route redraws itself behind you."];
+  const event=events[Math.floor(Math.random()*events.length)];log(event);toast(event);
+  if(fuel===0||tires===0){toast(fuel===0?"Engine stopped in the dark.":"A tire has failed.");$("status-copy").textContent="The vehicle is stranded. Decide whether to risk the road or proceed to the station.";}
+  if(clockMinutes>=1620){arriveHQ();}
+}
+function radioStep():void{log("RADIO: '998? There is no unit by that name tonight.'");setTrust(-1);toast("A voice on the radio sounds like you.");}
+function fireStep():void{if(ammo<=0){toast("Click. Empty.");return;}ammo=0;$("ammo-record").textContent="0 shells";log("Shot fired into the darkness. No clear target.");toast("The flash lights up the road. Something moves beyond it.");}
+function arriveHQ():void{
+  phase="night";$("phase-title").textContent="Class-X interview pending.";
+  $("status-copy").textContent="You reached the police station. The subject is waiting behind reinforced glass.";
+  $("action-buttons").innerHTML='<button id="ask-name" class="primary">ASK THEIR NAME</button><button id="ask-copy" class="danger">ASK WHY THEY COPY PEOPLE</button><button id="finish" class="wide ghost">END INTERROGATION</button>';
+  $("ask-name").addEventListener("click",()=>{log('CLASS-X: "You already know my name."');toast("Subject: You already know my name.");});
+  $("ask-copy").addEventListener("click",()=>{log('CLASS-X: "I copy what you remember."');toast("Subject: I copy what you remember.");});
+  $("finish").addEventListener("click",()=>{toast("Case filed. Northgate shift complete.");$("phase-title").textContent="CASE FILED";$("status-copy").textContent="The shift is over. The records remain incomplete.";});
+}
+function startShift():void{
+  shiftStarted=true;$("start-overlay").classList.add("hidden");visitorIndex=0;clockMinutes=360;trust=50;
+  $("clock").textContent="06:00";$("trust-value").textContent="50%";$("trust-bar").style.width="50%";
+  visitor=buildVisitor(0);updateVisitor();log("Shift started. Compare the record before making a decision.");toast("Northgate security desk online.");
+}
+addHotspot(phone,call998);addHotspot(id,inspectID);addHotspot(visitorSprite,()=>toast("A visitor is waiting. Compare their story and ID."));
+$("start-game").addEventListener("click",startShift);
+$("allow").addEventListener("click",()=>decision(true));
+$("deny").addEventListener("click",()=>decision(false));
+$("call998").addEventListener("click",call998);
+$("inspect").addEventListener("click",inspectID);
+$("start-overlay").addEventListener("transitionend",()=>{if($("start-overlay").classList.contains("hidden"))$("start-overlay").style.display="none";});
+renderer.domElement.addEventListener("pointermove",e=>{
+  pointer.x=(e.clientX/innerWidth)*2-1;pointer.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(interactives.map(i=>i.object),true);
+  renderer.domElement.style.cursor=hits.length?"pointer":"default";
+});
+renderer.domElement.addEventListener("click",e=>{
+  if(!shiftStarted)return;
+  pointer.x=(e.clientX/innerWidth)*2-1;pointer.y=-(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(pointer,camera);
+  const hits=raycaster.intersectObjects(interactives.map(i=>i.object),true);
+  if(hits.length){
+    let object:THREE.Object3D|null=hits[0].object;
+    while(object&&!interactives.some(i=>i.object===object))object=object.parent;
+    interactives.find(i=>i.object===object)?.action();
+  }
+});
+window.addEventListener("keydown",e=>{
+  if(e.repeat)return;
+  if(e.code==="KeyA")decision(true);if(e.code==="KeyD")decision(false);
+  if(e.code==="KeyF"){phase==="day"?call998():fireStep();}
+  if(e.code==="KeyI")inspectID();if(e.code==="KeyW"&&phase==="night")driveStep();
+  if(e.code==="KeyR"&&phase==="night")radioStep();if(e.code==="KeyH"&&phase==="night")arriveHQ();
+});
+let flicker=0;
+function animate():void{
+  requestAnimationFrame(animate);flicker+=.03;
+  deskLamp.intensity=phase==="night"?.15:1.45+Math.sin(flicker*2)*.06;
+  warningLight.intensity=phase==="night"?.1:.55+Math.sin(flicker*4)*.16;
+  renderer.render(scene,camera);
+}
+animate();
