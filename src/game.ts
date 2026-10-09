@@ -1,67 +1,86 @@
-import { makeVisitor, nightEvents, timeText, beep, type Visitor } from "./data";
-export type Phase = "menu" | "day" | "night" | "interrogation" | "ending";
-export type Score = { correct:number; mistakes:number; admitted:number; rejected:number; suspicion:number; trust:number; reputation:number; fafe:number };
-export type GameState = {
- phase:Phase; index:number; clock:number; nightMinutes:number; fuel:number; tires:number; ammo:number; alive:boolean;
- current?:Visitor; message:string; evidence:string[]; ending:string; score:Score;
-};
+import { makeVisitor, timeText, beep, type Visitor } from "./data";
+import { DAY_START_MINUTES, DAY_END_MINUTES, MINUTES_PER_VISITOR, MAX_VISITORS_PER_SHIFT, MAX_EVIDENCE_ITEMS } from "./core/constants";
+import { readSave, writeSave, hasSave as saveExists, clearSave } from "./storage/save-store";
+import { appendEvidence } from "./game/evidence";
+import { isDecisionCorrect } from "./game/identity-check";
+import { freshScore, recordCorrect, recordMistake, punishFalseReport } from "./game/scoring";
+import { simulateDriveStep, canReachHeadquarters } from "./game/night-drive";
+import { selectEnding } from "./game/ending";
+import type { GameState, Score, Phase } from "./game/types";
+
+export type { GameState, Score, Phase } from "./game/types";
 export const state:GameState = {
- phase:"menu",index:0,clock:360,nightMinutes:0,fuel:100,tires:100,ammo:1,alive:true,
- message:"WELCOME TO NORTHGATE.",evidence:[],ending:"",
- score:{correct:0,mistakes:0,admitted:0,rejected:0,suspicion:0,trust:50,reputation:50,fafe:50}
+ phase:"menu",index:0,clock:DAY_START_MINUTES,nightMinutes:0,fuel:100,tires:100,ammo:1,alive:true,
+ message:"WELCOME TO NORTHGATE.",evidence:[],ending:"",score:freshScore()
 };
-const SAVE_KEY="are-you-lying-v0.1-save";
-export function save():void { localStorage.setItem(SAVE_KEY,JSON.stringify(state)); }
+export function save():void { writeSave(state); }
 export function restore():boolean {
- try { const raw=localStorage.getItem(SAVE_KEY); if(!raw)return false; Object.assign(state,JSON.parse(raw)); return true; } catch { return false; }
+ const snapshot=readSave<Partial<GameState>>();
+ if(!snapshot)return false;
+ Object.assign(state,snapshot);
+ return true;
 }
-export function hasSave():boolean { return !!localStorage.getItem(SAVE_KEY); }
+export const hasSave=saveExists;
 export function note(text:string):void {
- state.evidence.push("["+timeText(state.phase==="night"||state.phase==="interrogation"?1440+state.nightMinutes:state.clock)+"] "+text);
- if(state.evidence.length>30)state.evidence.shift();
+ appendEvidence(state.evidence,text,state.phase==="night"||state.phase==="interrogation"?DAY_END_MINUTES+state.nightMinutes:state.clock,MAX_EVIDENCE_ITEMS);
 }
 export function startShift():void {
- state.phase="day";state.index=0;state.clock=360;state.nightMinutes=0;state.fuel=100;state.tires=100;state.ammo=1;state.alive=true;
+ state.phase="day";state.index=0;state.clock=DAY_START_MINUTES;state.nightMinutes=0;state.fuel=100;state.tires=100;state.ammo=1;state.alive=true;
  state.current=makeVisitor(0);state.message="SHIFT STARTED. VERIFY EVERYONE.";state.ending="";state.evidence=[];
- state.score={correct:0,mistakes:0,admitted:0,rejected:0,suspicion:0,trust:50,reputation:50,fafe:50};save();
+ state.score=freshScore();save();
 }
 function advance():void {
- state.index++;state.clock=Math.min(1440,360+state.index*125);state.current=undefined;
- if(state.clock>=1440||state.index>=9){state.clock=1440;state.phase="night";state.nightMinutes=0;state.message="MIDNIGHT. TAKE THE FILES TO POLICE HQ.";save();}
- else {state.current=makeVisitor(state.index);save();}
+ state.index++;state.clock=Math.min(DAY_END_MINUTES,DAY_START_MINUTES+state.index*MINUTES_PER_VISITOR);state.current=undefined;
+ if(state.clock>=DAY_END_MINUTES||state.index>=MAX_VISITORS_PER_SHIFT){
+   state.clock=DAY_END_MINUTES;state.phase="night";state.nightMinutes=0;state.message="MIDNIGHT. TAKE THE FILES TO POLICE HQ.";save();
+ } else { state.current=makeVisitor(state.index);save(); }
 }
 export function decide(allow:boolean):void {
- const v=state.current;if(!v)return;const ok=allow!==v.anomaly;
- if(ok){state.score.correct++;state.score.reputation=Math.min(100,state.score.reputation+2);state.score.trust=Math.min(100,state.score.trust+1);state.message=allow?"ACCESS GRANTED. MATCH ACCEPTED.":"DENIAL CONFIRMED. ANOMALY KEPT OUT.";}
- else{state.score.mistakes++;state.score.reputation=Math.max(0,state.score.reputation-8);state.score.suspicion=Math.min(100,state.score.suspicion+7);state.score.trust=Math.max(0,state.score.trust-5);if(v.anomaly&&allow)state.score.admitted++;if(!v.anomaly&&!allow)state.score.rejected++;state.message=allow?"WARNING: SOMETHING BAD ENTERED NORTHGATE.":"AN INNOCENT RESIDENT WAS DENIED.";}
- note(v.name+" — "+(allow?"ALLOW":"DENY")+" — "+(ok?"CORRECT":"WRONG")+(v.anomaly?" ["+v.clue+"]":""));beep(ok?700:150);advance();
+ const v=state.current;if(!v)return;
+ const correct=isDecisionCorrect(allow?"allow":"deny",v);
+ if(correct){recordCorrect(state.score);state.message=allow?"ACCESS GRANTED. MATCH ACCEPTED.":"DENIAL CONFIRMED. ANOMALY KEPT OUT.";}
+ else{
+  recordMistake(state.score);
+  if(v.anomaly&&allow)state.score.admitted++;
+  if(!v.anomaly&&!allow)state.score.rejected++;
+  state.message=allow?"WARNING: SOMETHING BAD ENTERED NORTHGATE.":"AN INNOCENT RESIDENT WAS DENIED.";
+ }
+ note(v.name+" — "+(allow?"ALLOW":"DENY")+" — "+(correct?"CORRECT":"WRONG")+(v.anomaly?" ["+v.clue+"]":""));
+ beep(correct?720:150,.1,correct?"square":"sawtooth");advance();
 }
 export function call998():void {
- const v=state.current;if(!v)return;state.message="998 CONNECTED. F.A.F.E UNIT DISPATCHED.";state.score.fafe=Math.min(100,state.score.fafe+2);note("998 called for "+v.name);beep(880);
- window.setTimeout(()=>{if(v.anomaly){state.score.correct++;state.message="F.A.F.E CONFIRMED THE ANOMALY. NORTHGATE SECURED.";note("F.A.F.E confirmed the anomaly in room "+v.room+".");}
- else{state.score.mistakes++;state.score.suspicion=Math.min(100,state.score.suspicion+5);state.message="F.A.F.E FOUND NO ANOMALY. FALSE REPORT.";note("F.A.F.E found no anomaly.");}advance();},600);
+ const v=state.current;if(!v)return;
+ state.message="998 CONNECTED. F.A.F.E UNIT DISPATCHED.";state.score.fafe=Math.min(100,state.score.fafe+2);note("998 called for "+v.name);beep(880,.12);
+ window.setTimeout(()=>{
+  if(v.anomaly){recordCorrect(state.score);state.message="F.A.F.E CONFIRMED THE ANOMALY. NORTHGATE SECURED.";note("F.A.F.E confirmed the anomaly in room "+v.room+".");}
+  else{punishFalseReport(state.score);state.message="F.A.F.E FOUND NO ANOMALY. FALSE REPORT.";note("F.A.F.E found no anomaly.");}
+  advance();
+ },600);
 }
 export function drive():void {
- if(!state.alive)return;state.nightMinutes+=10;state.fuel=Math.max(0,state.fuel-5);if(Math.random()<.22)state.tires=Math.max(0,state.tires-18);
- state.message=nightEvents[Math.floor(Math.random()*nightEvents.length)];note("NIGHT: "+state.message);
- if(state.fuel===0||state.tires===0){state.message=state.fuel===0?"ENGINE STOPS. A SHAPE MOVES IN THE DARK.":"TIRE FAILURE. THE ROAD GOES SILENT.";if(Math.random()<.6)state.alive=false;}
- if(state.nightMinutes>=180&&state.alive){arriveHQ();return;}save();
+ if(!state.alive)return;
+ const outcome=simulateDriveStep({nightMinutes:state.nightMinutes,fuel:state.fuel,tires:state.tires,alive:state.alive,message:state.message});
+ Object.assign(state,outcome.status);
+ note("NIGHT: "+outcome.event);
+ if(canReachHeadquarters(state)){arriveHQ();return;}
+ save();
 }
-export function checkRadio():void { note("RADIO: '998? There is no unit by that name tonight.'");state.score.suspicion++;state.message="RADIO RETURNS A VOICE THAT SOUNDS LIKE YOU.";beep(210);save(); }
+export function checkRadio():void {
+ note("RADIO: '998? There is no unit by that name tonight.'");
+ state.score.suspicion=Math.min(100,state.score.suspicion+1);state.message="RADIO RETURNS A VOICE THAT SOUNDS LIKE YOU.";beep(210,.18,"triangle");save();
+}
 export function fireShotgun():void {
- if(state.ammo<=0){state.message="CLICK. EMPTY.";beep(90);save();return;}
+ if(state.ammo<=0){state.message="CLICK. EMPTY.";beep(90,.06);save();return;}
  state.ammo=0;const interrupted=Math.random()>.3;
  state.message=interrupted?"THE FIGURE VANISHES INTO THE DARK.":"THE FLASH REVEALS NOTHING. YOU KEEP DRIVING.";
  note("SHOTGUN FIRED. "+(interrupted?"Encounter interrupted.":"No confirmed target."));
- state.nightMinutes+=25;beep(70,.16);save();
+ state.nightMinutes+=25;beep(70,.16,"sawtooth");save();
 }
 export function arriveHQ():void {
  if(!state.alive){state.phase="ending";state.ending="LOST IN THE DARK";save();return;}
  state.phase="interrogation";state.message="HQ ARRIVAL. CLASS-X INTERROGATION READY.";save();
 }
 export function finishInterrogation():void {
- const s=state.score;
- state.ending=s.suspicion>=25?"FALSE SECURITY — THE STATION DOES NOT TRUST YOU":s.admitted>0?"THE WRONG PERSON ENTERED":s.rejected>=2?"TOO PARANOID — NORTHGATE LOST TRUST":s.trust>=55?"F.A.F.E RECRUIT":"SHIFT COMPLETE — THE CASE REMAINS OPEN";
- state.phase="ending";save();
+ state.ending=selectEnding(state.score);state.phase="ending";save();
 }
-export function resetSave():void { localStorage.removeItem(SAVE_KEY); state.phase="menu"; }
+export function resetSave():void { clearSave();state.phase="menu"; }
