@@ -2,11 +2,11 @@ import { makeVisitor, nightEvents, timeText, beep, type Visitor } from "./data";
 export type Phase = "menu" | "day" | "night" | "interrogation" | "ending";
 export type Score = { correct:number; mistakes:number; admitted:number; rejected:number; suspicion:number; trust:number; reputation:number; fafe:number };
 export type GameState = {
- phase:Phase; index:number; clock:number; nightMinutes:number; fuel:number; tires:number; flare:number; alive:boolean;
+ phase:Phase; index:number; clock:number; nightMinutes:number; fuel:number; tires:number; ammo:number; alive:boolean;
  current?:Visitor; message:string; evidence:string[]; ending:string; score:Score;
 };
 export const state:GameState = {
- phase:"menu",index:0,clock:360,nightMinutes:0,fuel:100,tires:100,flare:1,alive:true,
+ phase:"menu",index:0,clock:360,nightMinutes:0,fuel:100,tires:100,ammo:1,alive:true,
  message:"WELCOME TO NORTHGATE.",evidence:[],ending:"",
  score:{correct:0,mistakes:0,admitted:0,rejected:0,suspicion:0,trust:50,reputation:50,fafe:50}
 };
@@ -21,7 +21,7 @@ export function note(text:string):void {
  if(state.evidence.length>30)state.evidence.shift();
 }
 export function startShift():void {
- state.phase="day";state.index=0;state.clock=360;state.nightMinutes=0;state.fuel=100;state.tires=100;state.flare=1;state.alive=true;
+ state.phase="day";state.index=0;state.clock=360;state.nightMinutes=0;state.fuel=100;state.tires=100;state.ammo=1;state.alive=true;
  state.current=makeVisitor(0);state.message="SHIFT STARTED. VERIFY EVERYONE.";state.ending="";state.evidence=[];
  state.score={correct:0,mistakes:0,admitted:0,rejected:0,suspicion:0,trust:50,reputation:50,fafe:50};save();
 }
@@ -48,8 +48,12 @@ export function drive():void {
  if(state.nightMinutes>=180&&state.alive){arriveHQ();return;}save();
 }
 export function checkRadio():void { note("RADIO: '998? There is no unit by that name tonight.'");state.score.suspicion++;state.message="RADIO RETURNS A VOICE THAT SOUNDS LIKE YOU.";beep(210);save(); }
-export function useFlare():void {
- if(state.flare<=0){state.message="NO FLARES LEFT.";return;}state.flare=0;state.message="THE FLARE LIGHTS THE ROAD. THE FIGURE RETREATS.";note("Emergency flare used to interrupt an encounter.");state.nightMinutes+=15;beep(600);save();
+export function fireShotgun():void {
+ if(state.ammo<=0){state.message="CLICK. EMPTY.";beep(90);save();return;}
+ state.ammo=0;const interrupted=Math.random()>.3;
+ state.message=interrupted?"THE FIGURE VANISHES INTO THE DARK.":"THE FLASH REVEALS NOTHING. YOU KEEP DRIVING.";
+ note("SHOTGUN FIRED. "+(interrupted?"Encounter interrupted.":"No confirmed target."));
+ state.nightMinutes+=25;beep(70,.16);save();
 }
 export function arriveHQ():void {
  if(!state.alive){state.phase="ending";state.ending="LOST IN THE DARK";save();return;}

@@ -2,7 +2,7 @@ import "./style.css";
 import { esc, timeText, beep } from "./data";
 import {
  state, hasSave, restore, startShift, save, note, decide, call998,
- drive, checkRadio, useFlare, arriveHQ, finishInterrogation
+ drive, checkRadio, fireShotgun, arriveHQ, finishInterrogation
 } from "./game";
 
 const app = document.querySelector<HTMLDivElement>("#app")!;
@@ -42,10 +42,10 @@ function renderBoard():void {
  document.querySelector("#back")!.addEventListener("click",renderDay);document.querySelector("#savecase")!.addEventListener("click",()=>{save();renderBoard();});
 }
 function renderNight():void {
- frame();document.querySelector("#screen")!.innerHTML='<div class="night"><section class="panel"><h3>NIGHT DRIVE — ROUTE TO POLICE HQ</h3><div class="road"></div><div class="actions"><button id="drive" class="btn">DRIVE 10 MIN</button><button id="radio" class="btn">CHECK RADIO</button><button id="flare" class="btn">USE EMERGENCY FLARE ('+state.flare+')</button></div><p class="note">'+esc(state.message)+'</p></section><aside class="panel"><h3>NIGHT STATUS</h3><div class="stats"><div class="stat">FUEL<b>'+state.fuel+'%</b></div><div class="stat">TIRES<b>'+state.tires+'%</b></div><div class="stat">FLARE<b>'+state.flare+'</b></div><div class="stat">TIME<b>'+timeText(1440+state.nightMinutes)+'</b></div></div><button id="hq" class="btn good">ARRIVE AT HQ</button></aside></div>';
+ frame();document.querySelector("#screen")!.innerHTML='<div class="night"><section class="panel"><h3>NIGHT DRIVE — ROUTE TO POLICE HQ</h3><div class="road"></div><div class="actions"><button id="drive" class="btn">DRIVE 10 MIN</button><button id="radio" class="btn">CHECK RADIO</button><button id="flare" class="btn">USE SHOTGUN ('+state.ammo+')</button></div><p class="note">'+esc(state.message)+'</p></section><aside class="panel"><h3>NIGHT STATUS</h3><div class="stats"><div class="stat">FUEL<b>'+state.fuel+'%</b></div><div class="stat">TIRES<b>'+state.tires+'%</b></div><div class="stat">AMMO<b>'+state.ammo+'</b></div><div class="stat">TIME<b>'+timeText(1440+state.nightMinutes)+'</b></div></div><button id="hq" class="btn good">ARRIVE AT HQ</button></aside></div>';
  document.querySelector("#drive")!.addEventListener("click",()=>{drive();render();});
  document.querySelector("#radio")!.addEventListener("click",()=>{checkRadio();render();});
- document.querySelector("#flare")!.addEventListener("click",()=>{useFlare();render();});
+ document.querySelector("#flare")!.addEventListener("click",()=>{fireShotgun();render();});
  document.querySelector("#hq")!.addEventListener("click",()=>{arriveHQ();render();});
 }
 function renderInterrogation():void {
