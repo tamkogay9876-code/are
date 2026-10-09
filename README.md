@@ -1,57 +1,39 @@
-# ARE YOU LYING? — v0.1
+# ARE YOU LYING? — Northgate 2.5D prototype
 
-A browser-playable prototype for a paranormal identity-checking and night-investigation game.
+A browser-playable, fixed-camera 2.5D horror-investigation prototype. The room and desk props are built from real Three.js geometry; visitors are original pixel-art billboard sprites placed inside the 3D scene. The scene renders at reduced internal resolution and is enlarged with nearest-neighbour sampling for a chunky pixel look.
 
 ## Run locally
-
 ```bash
 npm install
 npm run dev
 ```
+Open the Vite URL, usually http://localhost:5173/. The default page opens the 2.5D scene. You can also open `/northgate-3d.html`.
 
-Open the Vite URL printed in the terminal, usually http://localhost:5173.
+## Controls
+- Start the shift from the title panel.
+- **Allow**, **Deny**, or **Call 998 / F.A.F.E.** processes a visitor.
+- Click **Inspect ID** or press `I` to toggle the magnifier.
+- Press `A` to allow, `D` to deny, and `F` to call 998 or use an emergency flare at night.
+- The camera remains fixed, with point-and-click inspection rather than first-person walking.
 
-## Checks
+## Current 2.5D assets
+- Low-poly 3D security booth, framed visitor window, desk, monitor, keyboard, telephone, files, ID card, magnifier, desk lamp, calendar, plant and warning button.
+- Original low-resolution pixel portraits generated on a small canvas and used as billboard sprites in the 3D window.
+- A limited mauve/gray/brown palette, flat-shaded geometry, dark ink-like edges, chunky low-resolution rendering and a fixed camera.
+- Resident verification, randomized record discrepancies, evidence log, trust meter, 998 dispatch and a basic night-investigation continuation.
 
+## Project layout
+- `src/3d/main.ts`: scene, camera, clickable props, UI actions and game flow.
+- `src/3d/pixel-character.ts`: original pixel portrait texture and sprite builder.
+- `src/3d/style.css`: pixel-art HUD and responsive layout.
+- `src/data/residents.ts`: canonical fictional resident records.
+
+## Verification
 ```bash
 npm test
 npm run build
 ```
+GitHub Actions runs unit tests and a production build after pushes. Build/test success should be confirmed by the workflow before treating the prototype as stable.
 
-GitHub Actions runs the tests and production build after pushes and pull requests.
-
-## Features in this prototype
-
-- Day shift: verify resident IDs, rooms, relatives, neighbors, and phrases.
-- Randomized identity anomalies, questioning, and evidence logging.
-- Allow / deny / 998 F.A.F.E. dispatch.
-- Right-mouse ID magnifier.
-- Night drive with fuel, tire damage, road events, and a one-shell defense.
-- Class-X interrogation, multiple endings, and localStorage saves.
-- CRT-inspired responsive interface, SVG assets, and Web Audio effects.
-
-## Project structure
-
-```text
-src/
-  assets/       Vector emblems and the CRT overlay
-  audio/        Web Audio sound presets
-  core/         Shared constants and game rules
-  data/         Resident records, anomalies, night events
-  game/         Scoring, evidence, identity checks, drive and endings
-  storage/      Guarded localStorage adapter
-  ui/           Shared application shell
-  utils/        Formatting, DOM and random helpers
-  data.ts       Public data entrypoint
-  game.ts       State and gameplay orchestration
-  main.ts       Screen rendering and event handlers
-  style.css     Interface styles
-tests/          Unit tests for data, formatting, rules and scoring
-docs/           Design, architecture, controls, narrative, QA and roadmap
-```
-
-This repository contains over 50 purposeful source, test, asset, configuration, and documentation files. The main UI is still a prototype and can be split further as the game grows.
-
-## Tech stack
-
-TypeScript, Vite, Vitest, HTML/CSS, Web Audio, and localStorage. No backend or account system is required.
+## Art status
+This is an early procedural art pass. Props are real 3D meshes, while visitor artwork is pixel-art sprite texture. Polished third-party models, animated character rigs, authored texture maps and a complete night-driving level remain future asset work.

@@ -1,30 +1,39 @@
-# Northgate 3D Prototype
+# ARE YOU LYING? — Northgate 2.5D prototype
 
-This is the first browser-based 3D scene for **Are You Lying?** It uses Three.js and procedural geometry/materials so the scene is real 3D and does not depend on a collection of empty placeholder files.
+A browser-playable, fixed-camera 2.5D horror-investigation prototype. The room and desk props are built from real Three.js geometry; visitors are original pixel-art billboard sprites placed inside the 3D scene. The scene renders at reduced internal resolution and is enlarged with nearest-neighbour sampling for a chunky pixel look.
 
-## Run
-
-From the repository root:
-
+## Run locally
 ```bash
 npm install
 npm run dev
 ```
-
-Open `http://localhost:5173/northgate-3d.html`.
-
-## Current assets
-
-The scene builds a walkable security booth with walls, a secure door, desk, monitor, keyboard, emergency phone, ID card, magnifying glass, lamp, cabinet, chair, plant, security camera, warning beacon and a low-poly visitor character. These are editable Three.js meshes and materials created in code.
+Open the Vite URL, usually http://localhost:5173/. The default page opens the 2.5D scene. You can also open `/northgate-3d.html`.
 
 ## Controls
+- Start the shift from the title panel.
+- **Allow**, **Deny**, or **Call 998 / F.A.F.E.** processes a visitor.
+- Click **Inspect ID** or press `I` to toggle the magnifier.
+- Press `A` to allow, `D` to deny, and `F` to call 998 or use an emergency flare at night.
+- The camera remains fixed, with point-and-click inspection rather than first-person walking.
 
-- Click **Enter Night Shift** to begin.
-- Click the scene to lock the mouse; WASD to move and mouse to look.
-- Click the phone to call 998, the ID to inspect it, or the monitor to read the terminal.
-- Use A to allow, D to deny, F to call 998 and I to toggle the magnifier.
-- Press Escape to release the mouse.
+## Current 2.5D assets
+- Low-poly 3D security booth, framed visitor window, desk, monitor, keyboard, telephone, files, ID card, magnifier, desk lamp, calendar, plant and warning button.
+- Original low-resolution pixel portraits generated on a small canvas and used as billboard sprites in the 3D window.
+- A limited mauve/gray/brown palette, flat-shaded geometry, dark ink-like edges, chunky low-resolution rendering and a fixed camera.
+- Resident verification, randomized record discrepancies, evidence log, trust meter, 998 dispatch and a basic night-investigation continuation.
 
-## Limitations
+## Project layout
+- `src/3d/main.ts`: scene, camera, clickable props, UI actions and game flow.
+- `src/3d/pixel-character.ts`: original pixel portrait texture and sprite builder.
+- `src/3d/style.css`: pixel-art HUD and responsive layout.
+- `src/data/residents.ts`: canonical fictional resident records.
 
-This is a playable visual prototype, not the complete final game. Character geometry is low-poly and generated procedurally; final rigged characters, authored texture maps, polished animations and a full night-driving level remain future asset work.
+## Verification
+```bash
+npm test
+npm run build
+```
+GitHub Actions runs unit tests and a production build after pushes. Build/test success should be confirmed by the workflow before treating the prototype as stable.
+
+## Art status
+This is an early procedural art pass. Props are real 3D meshes, while visitor artwork is pixel-art sprite texture. Polished third-party models, animated character rigs, authored texture maps and a complete night-driving level remain future asset work.

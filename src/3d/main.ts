@@ -27,9 +27,9 @@ renderer.domElement.style.imageRendering="pixelated";
 root.prepend(renderer.domElement);
 
 function resize():void {
-  const scale=3;
-  const w=Math.max(320,Math.floor(innerWidth/scale));
-  const h=Math.max(180,Math.floor(innerHeight/scale));
+  const scale=Math.max(.8,Math.min(3,innerWidth/320,innerHeight/180));
+  const w=Math.max(320,Math.round(innerWidth/scale));
+  const h=Math.max(180,Math.round(innerHeight/scale));
   renderer.setSize(w,h,false);
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
@@ -86,7 +86,6 @@ box("ENV_floor",[0,-.13,0],[10,.26,10],MAT.floor,true);
 box("ENV_back_wall",[0,2.1,-4.55],[10,4.2,.18],MAT.wall,true);
 box("ENV_left_wall",[-4.95,2.1,0],[.18,4.2,9.2],MAT.wall,true);
 box("ENV_right_wall",[4.95,2.1,0],[.18,4.2,9.2],MAT.wall,true);
-box("ENV_left_wall_paint",-4 as unknown as [number,number,number],[1,1,1],MAT.wallLight); // kept away from focal area by scene framing
 // Visitor window is staged as a framed opening in the back wall.
 box("ENV_window_backing",[-.72,2.05,-4.38],[3.0,2.56,.12],MAT.wallLight,true);
 box("ENV_window_inner",[-.72,2.05,-4.29],[2.72,2.28,.035],MAT.dark);
@@ -124,7 +123,7 @@ box("PRP_desk_dark_inset",[0,.60,.815],[2.65,.42,.025],MAT.wood);
 box("PRP_desk_edge_highlight",[0,1.09,.70],[4.1,.045,.08],MAT.gold);
 
 // Terminal with chunky pixel lettering.
-box("PRP_monitor_shell",[0,1.66,-.76],[1.45,.91,.20],MAT.dark,true);
+box("PRP_monitor_flare",[0,1.66,-.76],[1.45,.91,.20],MAT.dark,true);
 box("PRP_monitor_bezel",[0,1.66,-.645],[1.29,.75,.03],MAT.woodLight);
 box("PRP_monitor_glass",[0,1.67,-.62],[1.17,.63,.025],MAT.screen);
 label("NORTHGATE / 998",[-.66,1.83,-.59],"#9bd3cf");
@@ -177,7 +176,7 @@ let trust=50;
 let shiftStarted=false;
 let magnified=false;
 let phase:"day"|"night"="day";
-let ammo=1;
+let flare=1;
 let fuel=100;
 let tires=100;
 const raycaster=new THREE.Raycaster();
@@ -231,17 +230,18 @@ function setTrust(amount:number):void{
 function showNightPanel():void{
   phase="night";$("phase-title").textContent="A road with no signal.";
   $("status-copy").textContent="The police station is three hours away. The radio has started whispering.";
-  $("records").innerHTML='<div><span>FUEL</span><b id="fuel-record">100%</b></div><div><span>TIRES</span><b id="tire-record">100%</b></div><div><span>SHOTGUN</span><b id="ammo-record">1 shell</b></div><div><span>ROUTE</span><b>POLICE HQ</b></div>';
-  $("action-buttons").innerHTML='<button id="drive" class="primary">DRIVE 10 MIN <kbd>W</kbd></button><button id="radio" class="danger">CHECK RADIO <kbd>R</kbd></button><button id="fire" class="wide">USE SHOTGUN <kbd>F</kbd></button><button id="hq" class="wide ghost">ARRIVE AT HQ <kbd>H</kbd></button>';
+  $("records").innerHTML='<div><span>FUEL</span><b id="fuel-record">100%</b></div><div><span>TIRES</span><b id="tire-record">100%</b></div><div><span>DISTRESS FLARE</span><b id="flare-record">1 flare</b></div><div><span>ROUTE</span><b>POLICE HQ</b></div>';
+  $("action-buttons").innerHTML='<button id="drive" class="primary">DRIVE 10 MIN <kbd>W</kbd></button><button id="radio" class="danger">CHECK RADIO <kbd>R</kbd></button><button id="flare" class="wide">USE EMERGENCY FLARE <kbd>F</kbd></button><button id="hq" class="wide ghost">ARRIVE AT HQ <kbd>H</kbd></button>';
   const nightMat=material("#080b17");
   scene.background=new THREE.Color("#080b17");scene.fog=new THREE.Fog("#080b17",7,20);
   deskLamp.intensity=.15;warningLight.intensity=.2;
   // The scene remains fixed-camera; the outside/window becomes a stylized night vignette.
+  visitorSprite.visible=false;
   box("NIGHT_window_dark",[-.72,2.05,-4.16],[2.45,2.0,.025],nightMat);
   for(let i=0;i<9;i++)box("NIGHT_distant_building",[ -4.4+i*1.1, .65+(i%3)*.35,-4.0],[.62,1.3+(i%3)*.7,.06],nightMat);
   $("drive").addEventListener("click",driveStep);
   $("radio").addEventListener("click",radioStep);
-  $("fire").addEventListener("click",fireStep);
+  $("flare").addEventListener("click",useFlare);
   $("hq").addEventListener("click",arriveHQ);
 }
 function advance():void{
@@ -286,7 +286,7 @@ function driveStep():void{
   if(clockMinutes>=1620){arriveHQ();}
 }
 function radioStep():void{log("RADIO: '998? There is no unit by that name tonight.'");setTrust(-1);toast("A voice on the radio sounds like you.");}
-function fireStep():void{if(ammo<=0){toast("Click. Empty.");return;}ammo=0;$("ammo-record").textContent="0 shells";log("Shot fired into the darkness. No clear target.");toast("The flash lights up the road. Something moves beyond it.");}
+function useFlare():void{if(phase!=="night")return;if(flare<=0){toast("No emergency flares left.");return;}flare=0;$("flare-record").textContent="0 flares";log("Emergency flare lights the road and briefly obscures the figure.");toast("The flare lights the road. A silhouette retreats into the dark.");}flare=0;$("flare-record").textContent="0 flares";log("An emergency flare lights the road. The figure retreats.");toast("The flash lights up the road. Something moves beyond it.");}
 function arriveHQ():void{
   phase="night";$("phase-title").textContent="Class-X interview pending.";
   $("status-copy").textContent="You reached the police station. The subject is waiting behind reinforced glass.";
@@ -327,7 +327,7 @@ renderer.domElement.addEventListener("click",e=>{
 window.addEventListener("keydown",e=>{
   if(e.repeat)return;
   if(e.code==="KeyA")decision(true);if(e.code==="KeyD")decision(false);
-  if(e.code==="KeyF"){phase==="day"?call998():fireStep();}
+  if(e.code==="KeyF"){phase==="day"?call998():useFlare();}
   if(e.code==="KeyI")inspectID();if(e.code==="KeyW"&&phase==="night")driveStep();
   if(e.code==="KeyR"&&phase==="night")radioStep();if(e.code==="KeyH"&&phase==="night")arriveHQ();
 });
