@@ -62,6 +62,7 @@ export function drive():void {
  const outcome=simulateDriveStep({nightMinutes:state.nightMinutes,fuel:state.fuel,tires:state.tires,alive:state.alive,message:state.message});
  Object.assign(state,outcome.status);
  note("NIGHT: "+outcome.event);
+ if(!state.alive){state.phase="ending";state.ending="LOST IN THE DARK";save();return;}
  if(canReachHeadquarters(state)){arriveHQ();return;}
  save();
 }
@@ -74,7 +75,9 @@ export function fireShotgun():void {
  state.ammo=0;const interrupted=Math.random()>.3;
  state.message=interrupted?"THE FIGURE VANISHES INTO THE DARK.":"THE FLASH REVEALS NOTHING. YOU KEEP DRIVING.";
  note("SHOTGUN FIRED. "+(interrupted?"Encounter interrupted.":"No confirmed target."));
- state.nightMinutes+=25;beep(70,.16,"sawtooth");save();
+ state.nightMinutes+=25;beep(70,.16,"sawtooth");
+ if(state.alive&&canReachHeadquarters(state)){arriveHQ();return;}
+ save();
 }
 export function arriveHQ():void {
  if(!state.alive){state.phase="ending";state.ending="LOST IN THE DARK";save();return;}
