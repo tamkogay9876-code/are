@@ -5,12 +5,12 @@ import { freshScore } from "../src/game/scoring";
 
 describe("identity decisions", () => {
   it("allows real residents and denies impostors", () => {
-    expect(isDecisionCorrect("allow", {anomaly:false} as never)).toBe(true);
-    expect(isDecisionCorrect("deny", {anomaly:true} as never)).toBe(true);
+    expect(isDecisionCorrect("allow", {anomaly:false})).toBe(true);
+    expect(isDecisionCorrect("deny", {anomaly:true})).toBe(true);
   });
   it("flags the inverse decisions as mistakes", () => {
-    expect(isDecisionCorrect("allow", {anomaly:true} as never)).toBe(false);
-    expect(isDecisionCorrect("deny", {anomaly:false} as never)).toBe(false);
+    expect(isDecisionCorrect("allow", {anomaly:true})).toBe(false);
+    expect(isDecisionCorrect("deny", {anomaly:false})).toBe(false);
   });
 });
 describe("ending selection", () => {

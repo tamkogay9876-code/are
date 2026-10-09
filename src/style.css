@@ -37,3 +37,9 @@ main{padding:22px;max-width:1400px;margin:auto}
 .ending{max-width:720px;margin:10vh auto}
 @media(max-width:1000px){.grid,.night{grid-template-columns:1fr}.visitor{grid-template-columns:100px 1fr}}
 @media(max-width:650px){main{padding:10px}.stats{grid-template-columns:1fr 1fr}.visitor{grid-template-columns:1fr}}
+
+/* Vector asset integration */
+.crt{background-image:url("./assets/crt-overlay.svg"),repeating-linear-gradient(0deg,rgba(255,255,255,.025),rgba(255,255,255,.025) 1px,transparent 1px,transparent 3px)}
+.brand-mark{width:28px;height:28px;object-fit:contain;margin-right:12px}
+.brand-large{width:64px;height:64px;image-rendering:pixelated;margin-bottom:12px}
+.fafe-badge{display:block;width:160px;max-width:100%;height:auto;margin:0 0 16px}

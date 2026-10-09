@@ -1,5 +1,9 @@
 import "./style.css";
-import { esc, timeText, beep } from "./data";
+import { timeText, beep } from "./data";
+import { esc } from "./utils/dom";
+import { renderShell } from "./ui/shell";
+import northgateEmblem from "./assets/northgate-emblem.svg";
+import fafeBadge from "./assets/fafe-badge.svg";
 import {
  state, hasSave, restore, startShift, save, note, decide, call998,
  drive, checkRadio, fireShotgun, arriveHQ, finishInterrogation
@@ -8,10 +12,8 @@ import {
 const app = document.querySelector<HTMLDivElement>("#app")!;
 
 function frame():void {
- app.innerHTML='<div class="crt"><header><b>ARE YOU LYING?</b><span id="clock"></span><span id="phase"></span></header><main id="screen"></main></div>';
- const clock=document.querySelector("#clock"),phase=document.querySelector("#phase");
- if(clock)clock.textContent=state.phase==="ending"?"END":timeText(state.phase==="night"||state.phase==="interrogation"?1440+state.nightMinutes:state.clock);
- if(phase)phase.textContent=state.phase==="menu"?"SECURE HOUSING":state.phase==="day"?"DAY SHIFT":state.phase==="night"?"NIGHT INVESTIGATION":state.phase==="interrogation"?"CLASS-X INTERROGATION":"CASE CLOSED";
+ const minutes=state.phase==="night"||state.phase==="interrogation"?1440+state.nightMinutes:state.clock;
+ renderShell(app,state.phase,minutes,northgateEmblem);
 }
 function render():void {
  if(state.phase==="menu")return menu();
@@ -22,7 +24,7 @@ function render():void {
 }
 function menu():void {
  frame();document.querySelector("#phase")!.textContent="SECURE HOUSING";
- document.querySelector("#screen")!.innerHTML='<section class="menu"><div class="menu-card"><div class="muted">NORTHGATE RESIDENTIAL CONTROL</div><h1 class="title">ARE YOU LYING?</h1><p class="note">CHECK THE ID. CHECK THE STORY. CHECK YOURSELF.</p><button id="start" class="btn">START SHIFT</button>'+(hasSave()?'<button id="continue" class="btn">CONTINUE</button>':"")+'<button id="reset" class="btn">RESET SAVE</button><p class="note">v0.1 prototype · hold right mouse button over the ID to magnify</p></div></section>';
+ document.querySelector("#screen")!.innerHTML='<section class="menu"><div class="menu-card"><img class="brand-large" src="'+northgateEmblem+'" alt="Northgate emblem"><div class="muted">NORTHGATE RESIDENTIAL CONTROL</div><h1 class="title">ARE YOU LYING?</h1><p class="note">CHECK THE ID. CHECK THE STORY. CHECK YOURSELF.</p><button id="start" class="btn">START SHIFT</button>'+(hasSave()?'<button id="continue" class="btn">CONTINUE</button>':"")+'<button id="reset" class="btn">RESET SAVE</button><p class="note">v0.1 prototype · hold right mouse button over the ID to magnify</p></div></section>';
  document.querySelector("#start")!.addEventListener("click",()=>{startShift();render();});
  document.querySelector("#continue")?.addEventListener("click",()=>{if(restore())render();else{startShift();render();}});
  document.querySelector("#reset")!.addEventListener("click",()=>{localStorage.removeItem("are-you-lying-v0.1-save");location.reload();});
@@ -49,7 +51,7 @@ function renderNight():void {
  document.querySelector("#hq")!.addEventListener("click",()=>{arriveHQ();render();});
 }
 function renderInterrogation():void {
- frame();document.querySelector("#screen")!.innerHTML='<section class="panel"><h3>F.A.F.E / CLASS-X INTERROGATION</h3><div class="visitor"><div class="doc" style="background:#111;color:#ddd;border-color:#566a78"><b>CLASS-X / FILE 000</b><hr><p>SUBJECT: UNKNOWN</p><p>ALIAS: THE PATIENT</p><p>WARNING: SUBJECT MAY MIRROR YOUR LANGUAGE.</p></div><div><p class="note">The subject watches through the glass.</p><button class="btn qx" data-q="name">What is your name?</button><button class="btn qx" data-q="why">Why do you imitate them?</button><button class="btn qx" data-q="me">What do you know about me?</button><div id="xreply" class="note"></div><button id="finish" class="btn good">END INTERROGATION</button></div></div></section>';
+ frame();document.querySelector("#screen")!.innerHTML='<section class="panel"><h3>F.A.F.E / CLASS-X INTERROGATION</h3><img class="fafe-badge" src="'+fafeBadge+'" alt="F.A.F.E response badge"><div class="visitor"><div class="doc" style="background:#111;color:#ddd;border-color:#566a78"><b>CLASS-X / FILE 000</b><hr><p>SUBJECT: UNKNOWN</p><p>ALIAS: THE PATIENT</p><p>WARNING: SUBJECT MAY MIRROR YOUR LANGUAGE.</p></div><div><p class="note">The subject watches through the glass.</p><button class="btn qx" data-q="name">What is your name?</button><button class="btn qx" data-q="why">Why do you imitate them?</button><button class="btn qx" data-q="me">What do you know about me?</button><div id="xreply" class="note"></div><button id="finish" class="btn good">END INTERROGATION</button></div></div></section>';
  document.querySelectorAll<HTMLButtonElement>(".qx").forEach(b=>b.addEventListener("click",()=>{const q=b.dataset.q||"";const a=q==="name"?"You already know my name.":q==="why"?"I imitate what you remember.":"Your file says you work here. It does not say you are from here.";document.querySelector("#xreply")!.textContent='SUBJECT: "'+a+'"';note("CLASS-X: "+a);save();}));
  document.querySelector("#finish")!.addEventListener("click",()=>{finishInterrogation();render();});
 }
